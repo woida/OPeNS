@@ -1,0 +1,40 @@
+# Blueprint da Render: cria o banco PostgreSQL e o serviço web com disco persistente.
+# Confira no painel da Render os nomes de plano e a região antes de aplicar
+# (planos de banco e preços mudam; ajuste "plan" se o painel indicar outro nome).
+
+databases:
+  - name: opens-db
+    databaseName: opens
+    user: opens
+    plan: basic-256mb
+    region: virginia          # a Render não tem região no Brasil; mantenha banco e web na mesma região
+
+services:
+  - type: web
+    name: auditor-opens
+    runtime: python
+    region: virginia
+    plan: starter             # disco persistente exige plano pago
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    disk:
+      name: midias
+      mountPath: /var/data
+      sizeGB: 1                 # o disco só pode aumentar depois, nunca diminuir
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: ANTHROPIC_API_KEY
+        sync: false           # você digita no painel; não vai para o repositório
+      - key: APP_ACCESS_CODE
+        sync: false
+      - key: OPENS_CONTATO_PRIVACIDADE
+        sync: false
+      - key: OPENS_SALT
+        generateValue: true   # guarde uma cópia: se mudar, perde a ligação com os hashes antigos
+      - key: OPENS_PASTA_MIDIAS
+        value: /var/data/midias
+      - key: DATABASE_URL
+        fromDatabase:
+          name: opens-db
+          property: connectionString
